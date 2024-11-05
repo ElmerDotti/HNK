@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.graph_objects as go
 from PIL import Image
+from io import BytesIO
 import requests
 
 # URL base do repositório GitHub
@@ -23,10 +24,19 @@ def carregar_arquivo(url):
     response.raise_for_status()
     return response.content
 
-# Tela de login
+# Função de login com correção para carregamento da imagem
 def login():
-    logo = Image.open(requests.get(f"{BASE_URL}logo-removebg.PNG", stream=True).raw)
-    st.image(logo, width=150)  # Exibe o logotipo da Heineken
+    try:
+        response = requests.get(f"{BASE_URL}logo-removebg.png")
+        response.raise_for_status()  # Verifica se a resposta está OK
+        logo = Image.open(BytesIO(response.content))  # Carrega a imagem a partir dos bytes
+        st.image(logo, width=150)  # Exibe o logotipo da Heineken
+    except requests.exceptions.RequestException as e:
+        st.error("Erro ao carregar o logotipo. Verifique a URL.")
+        st.write(e)
+    except Image.UnidentifiedImageError:
+        st.error("Erro ao carregar a imagem: formato de imagem não identificado.")
+
     st.title("Login")
 
     # Campos de login
