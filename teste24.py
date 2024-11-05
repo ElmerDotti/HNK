@@ -200,7 +200,7 @@ def main():
         if opcao == "MODELO PREDITIVO":
             st.title("Modelo de Previsão da Cor Após Etapa de Resfriamento - Cerveja Amstel")
 
-            video_url = "<iframe src="https://www.veed.io/embed/31af47b8-7c73-468e-80da-e166c625d803?watermark=1&color=&sharing=1&title=1" width="744" height="504" frameborder="0" title="Modelo Inovador para Cuidado da Cor" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>"
+            video_url = "<iframe src="https://www.veed.io/embed/31af47b8-7c73-468e-80da-e166c625d803?watermark=0&color=&sharing=0&title=0" width="744" height="504" frameborder="0" title="Modelo Inovador para Cuidado da Cor" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>"
             st.video(video_url)
 
             etapa_crisp_dm("Etapa: Entendimento do Negócio")
