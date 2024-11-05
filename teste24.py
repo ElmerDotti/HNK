@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import seaborn as sns
-import networkx as nx
+import plotly.graph_objects as go
 from PIL import Image
 import requests
 
@@ -25,7 +25,8 @@ def carregar_arquivo(url):
 
 # Tela de login
 def login():
-    st.image(f"{BASE_URL}logo-removebg.PNG", width=150)  # Exibe o logotipo da Heineken
+    logo = Image.open(requests.get(f"{BASE_URL}logo-removebg.PNG", stream=True).raw)
+    st.image(logo, width=150)  # Exibe o logotipo da Heineken
     st.title("Login")
 
     # Campos de login
@@ -41,8 +42,10 @@ def login():
             st.error("Usuário ou senha incorretos!")
 
 # Configuração de estilo para exibir as etapas do método CRISP-DM em fonte branca
-def etapa_crisp_dm(texto):
+def etapa_crisp_dm(texto, descricao, objetivo_tecnica):
     st.markdown(f"<h5 style='color:white;'>{texto}</h5>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:white;'>{descricao}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:white;'><strong>Objetivo:</strong> {objetivo_tecnica}</p>", unsafe_allow_html=True)
 
 # Mapeamento de etapas de fabricação para rótulos de string
 ETAPAS_NOMES = {
@@ -55,9 +58,8 @@ ETAPAS_NOMES = {
 def carregar_dados():
     caminho = BASE_URL + "Heineken%20-%20Data%20Science%20CB%20Use%20Case%202024.csv"
     dados = pd.read_csv(caminho)
-    dados = dados[dados['Product'] == 'AMST']
+    dados = dados[dados['Product'] == 'AMSTL']
     dados['Date/Time'] = pd.to_datetime(dados['Date/Time'])
-    dados = dados.drop(columns=['Product'])  # Remover coluna não numérica
     return dados
 
 # Tratamento de dados: interpolação e valores absolutos para negativos
@@ -110,20 +112,42 @@ class BeerColorPredictor(nn.Module):
         out = self.fc(out[:, -1, :])
         return out, h_n[-1]  # Retorna saída e pesos ocultos
 
-# Função para criar e exibir o fluxograma do modelo usando networkx
+# Função para criar e exibir o fluxograma do modelo usando plotly
 def plot_fluxograma_modelo():
+    fig = go.Figure()
+
+    # Adiciona os nós do fluxograma
     etapas = list(ETAPAS_NOMES.values()) + ["Prever Cor"]
-    G = nx.DiGraph()
-    
-    # Adiciona nós e arestas
+    pos_x = [i * 2 for i in range(len(etapas))]
+    pos_y = [1] * len(etapas)
+    color_map = ["lightblue"] * (len(etapas) - 1) + ["green"]
+
+    for i, etapa in enumerate(etapas):
+        fig.add_trace(go.Scatter(
+            x=[pos_x[i]], y=[pos_y[i]],
+            mode="markers+text",
+            marker=dict(size=30, color=color_map[i]),
+            text=etapa,
+            textposition="bottom center",
+            showlegend=False
+        ))
+
+    # Adiciona as conexões
     for i in range(len(etapas) - 1):
-        G.add_edge(etapas[i], etapas[i + 1])
-    
-    pos = nx.spring_layout(G)
-    plt.figure(figsize=(10, 5))
-    nx.draw(G, pos, with_labels=True, node_size=2000, node_color="lightblue", font_size=10, font_weight="bold", edge_color="gray", arrows=True)
-    plt.title("Fluxograma do Modelo de Previsão de Cor")
-    st.pyplot(plt)
+        fig.add_trace(go.Scatter(
+            x=[pos_x[i], pos_x[i+1]], y=[pos_y[i], pos_y[i+1]],
+            mode="lines",
+            line=dict(width=2, color="black"),
+            showlegend=False
+        ))
+
+    fig.update_layout(
+        title="Fluxograma do Modelo de Previsão de Cor",
+        xaxis=dict(showgrid=False, zeroline=False, visible=False),
+        yaxis=dict(showgrid=False, zeroline=False, visible=False),
+        plot_bgcolor="white"
+    )
+    st.plotly_chart(fig)
 
 # Treinamento da rede neural com 5.000 iterações garantidas
 def treinar_rede_neural(X_train, y_train, X_val, y_val, input_dim, output_dim):
@@ -203,36 +227,40 @@ def main():
             video_url = "https://www.veed.io/view/31af47b8-7c73-468e-80da-e166c625d803?panel=share"
             st.video(video_url)
 
-            etapa_crisp_dm("Etapa: Entendimento do Negócio")
-            st.markdown("<p style='color:white;'>A Heineken Brasil enfrenta desafios para manter a cor da cerveja consistente no processo de fabricação, especialmente para a marca AMSTEL. A fase quente do processo de fabricação tem um impacto significativo na cor final. O objetivo deste modelo é prever a cor da cerveja logo após o processo de resfriamento, utilizando técnicas avançadas de ciência de dados e machine learning.</p>", unsafe_allow_html=True)
-
-            etapa_crisp_dm("Etapa: Entendimento dos Dados")
-            st.markdown("<h3 style='color:white;'>Dados Carregados</h3>", unsafe_allow_html=True)
+            etapa_crisp_dm("Etapa: Entendimento do Negócio", 
+                           "Estudo do impacto do processo de fabricação na cor do produto.",
+                           "Definir o problema e estabelecer um objetivo claro para a modelagem.")
+            
+            etapa_crisp_dm("Etapa: Entendimento dos Dados", 
+                           "Carregamos e filtramos os dados para focar no produto AMSTL.", 
+                           "Coletar dados necessários e garantir integridade para o produto AMSTL.")
             dados = carregar_dados()
             st.dataframe(dados)
 
-            etapa_crisp_dm("Etapa: Preparação dos Dados")
-            st.markdown("<h3 style='color:white;'>Tratamento de Dados</h3>", unsafe_allow_html=True)
+            etapa_crisp_dm("Etapa: Preparação dos Dados", 
+                           "Tratamento dos dados para lidar com ausências e outliers.", 
+                           "Garantir a consistência e a qualidade dos dados para a modelagem.")
             dados_tratados = tratar_dados(dados)
             st.dataframe(dados_tratados)
 
-            etapa_crisp_dm("Etapa: Preparação dos Dados")
-            st.markdown("<h3 style='color:white;'>Dados Suavizados com Média Móvel</h3>", unsafe_allow_html=True)
+            etapa_crisp_dm("Etapa: Preparação dos Dados", 
+                           "Suavizamos os dados usando média móvel.", 
+                           "Reduzir flutuações nos dados para melhorar a estabilidade da modelagem.")
             dados_suavizados = suavizar_com_media_movel(dados_tratados)
             st.dataframe(dados_suavizados)
 
-            etapa_crisp_dm("Etapa: Preparação dos Dados")
-            st.markdown("<h3 style='color:white;'>Dados com Segmentação de Etapas</h3>", unsafe_allow_html=True)
+            etapa_crisp_dm("Etapa: Preparação dos Dados", 
+                           "Segmentação das etapas de fabricação com KMeans.", 
+                           "Identificar fases distintas do processo de fabricação para modelagem.")
             dados_segmentados = segmentar_etapas(dados_suavizados)
             st.dataframe(dados_segmentados)
 
-            etapa_crisp_dm("Etapa: Modelagem")
-            st.markdown("<h3 style='color:white;'>Fluxograma do Modelo de Previsão</h3>", unsafe_allow_html=True)
+            etapa_crisp_dm("Etapa: Modelagem", 
+                           "Construção de modelo preditivo LSTM para previsão da cor.",
+                           "Prever a cor do produto após a etapa de resfriamento.")
             plot_fluxograma_modelo()
 
-            etapa_crisp_dm("Etapa: Modelagem")
             X, y, scaler = preparar_dados_para_modelo(dados_segmentados)
-            
             X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
             X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
 
@@ -247,22 +275,33 @@ def main():
             output_dim = 1
             model = treinar_rede_neural(X_train, y_train, X_val, y_val, input_dim=input_dim, output_dim=output_dim)
 
-            etapa_crisp_dm("Etapa: Avaliação")
-            st.markdown("<h3 style='color:white;'>Métricas de Desempenho</h3>", unsafe_allow_html=True)
+            etapa_crisp_dm("Etapa: Avaliação", 
+                           "Avaliação das métricas de desempenho do modelo.", 
+                           "Calcular métricas de performance e interpretar a efetividade do modelo.")
             conjuntos = {'Treinamento': (X_train, y_train), 'Validação': (X_val, y_val), 'Teste': (X_test, y_test)}
             resultados = []
 
-            for nome, (X_data, y_data) in conjuntos.items():
+            cols = st.columns(3)
+            for idx, (nome, (X_data, y_data)) in enumerate(conjuntos.items()):
                 y_data_real, y_data_pred, rmse, mae, assertividade, r2, auc, gini, ks = realizar_backtest(model, X_data, y_data, nome)
                 resultados.append({
                     "Conjunto": nome, "RMSE": rmse, "MAE": mae, "Assertividade": assertividade,
                     "R²": r2, "AUC": auc, "Gini": gini, "KS": ks
                 })
+                
+                fig, ax = plt.subplots()
+                ax.plot(y_data_real, label="Valor Real")
+                ax.plot(y_data_pred, label="Previsão", linestyle='--')
+                ax.set_title(f"{nome}")
+                ax.legend()
+                cols[idx].pyplot(fig)
 
             resultados_df = pd.DataFrame(resultados)
             st.dataframe(resultados_df)
 
-            etapa_crisp_dm("Etapa: Avaliação")
+            etapa_crisp_dm("Etapa: Avaliação", 
+                           "Importância das variáveis na previsão da cor.",
+                           "Avaliar a relevância das variáveis usadas no modelo preditivo.")
             plot_importancia_variaveis(dados_segmentados, y)
 
         elif opcao == "Formulação Matemática":
