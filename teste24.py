@@ -10,9 +10,8 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import seaborn as sns
-import pydot
+import networkx as nx
 from PIL import Image
-from io import BytesIO
 import requests
 
 # URL base do repositório GitHub
@@ -54,7 +53,6 @@ ETAPAS_NOMES = {
 
 # Carregar e filtrar dados para o produto 'AMSTEL'
 def carregar_dados():
-    # Caminho completo para o CSV no GitHub
     caminho = BASE_URL + "Heineken%20-%20Data%20Science%20CB%20Use%20Case%202024.csv"
     dados = pd.read_csv(caminho)
     dados = dados[dados['Product'] == 'AMST']
@@ -112,22 +110,20 @@ class BeerColorPredictor(nn.Module):
         out = self.fc(out[:, -1, :])
         return out, h_n[-1]  # Retorna saída e pesos ocultos
 
-# Função para criar e exibir o fluxograma do modelo usando pydot
+# Função para criar e exibir o fluxograma do modelo usando networkx
 def plot_fluxograma_modelo():
-    graph = pydot.Dot("Modelo de Previsão de Cor", graph_type="digraph", rankdir="LR")
-    
     etapas = list(ETAPAS_NOMES.values()) + ["Prever Cor"]
-    for i, etapa in enumerate(etapas[:-1]):
-        graph.add_node(pydot.Node(etapa, shape="box", style="filled", fillcolor="lightblue"))
-        graph.add_edge(pydot.Edge(etapa, etapas[i + 1]))
-
-    prever_cor_node = pydot.Node("Prever Cor", shape="box", style="filled", fillcolor="green")
-    graph.add_node(prever_cor_node)
-    graph.add_edge(pydot.Edge("Resfriamento", "Prever Cor"))
-
-    png_str = graph.create_png()
-    image = Image.open(BytesIO(png_str))
-    st.image(image, caption="Fluxograma do Modelo de Previsão de Cor", use_column_width=True)
+    G = nx.DiGraph()
+    
+    # Adiciona nós e arestas
+    for i in range(len(etapas) - 1):
+        G.add_edge(etapas[i], etapas[i + 1])
+    
+    pos = nx.spring_layout(G)
+    plt.figure(figsize=(10, 5))
+    nx.draw(G, pos, with_labels=True, node_size=2000, node_color="lightblue", font_size=10, font_weight="bold", edge_color="gray", arrows=True)
+    plt.title("Fluxograma do Modelo de Previsão de Cor")
+    st.pyplot(plt)
 
 # Treinamento da rede neural com 5.000 iterações garantidas
 def treinar_rede_neural(X_train, y_train, X_val, y_val, input_dim, output_dim):
