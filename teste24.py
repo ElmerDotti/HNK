@@ -131,6 +131,32 @@ def plot_importancia_variaveis(dados, cor_prevista):
         diagram.edge("Cor", var, label=f"Influência: {top_corr[var]:.2f}")
     st.graphviz_chart(diagram)
 
+def processar_modelo_academico(X_train, y_train, X_val, y_val, input_dim, output_dim, iteracoes):
+    model = BeerColorPredictor(input_dim=input_dim, hidden_dim=128, output_dim=output_dim)
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    progress_bar = st.progress(0)
+    for epoch in range(iteracoes):
+        model.train()
+        optimizer.zero_grad()
+        outputs, _ = model(X_train.unsqueeze(1))
+        loss = criterion(outputs.squeeze(), y_train)
+        loss.backward()
+        optimizer.step()
+
+        if epoch % (iteracoes // 100) == 0:
+            progress = int((epoch / iteracoes) * 100)
+            progress_bar.progress(progress)
+            model.eval()
+            with torch.no_grad():
+                val_outputs, _ = model(X_val.unsqueeze(1))
+                val_loss = criterion(val_outputs.squeeze(), y_val)
+                st.write(f'Época [{epoch+1}/{iteracoes}], Loss: {loss.item():.4f}, Val_Loss: {val_loss.item():.4f}')
+
+    progress_bar.progress(100)
+    return model
+
 def main():
     if "login" not in st.session_state:
         st.session_state["login"] = False
@@ -139,9 +165,27 @@ def main():
         login()
     else:
         st.sidebar.title("Menu")
-        opcao = st.sidebar.radio("Escolha uma opção:", ["Contexto", "MODELO PREDITIVO", "Formulação Matemática"])
+        opcao = st.sidebar.radio("Escolha uma opção:", ["Contexto", "MODELO PREDITIVO", "Formulação Matemática", "Solução Acadêmica"])
 
-        if opcao == "Contexto":
+        if opcao == "Solução Acadêmica":
+            st.title("Solução Acadêmica - Modelo de Previsão de Cor da Cerveja")
+            iteracoes = st.number_input("Digite a quantidade de iterações para o treinamento:", min_value=1, max_value=10000, value=5000)
+            if st.button("Processar Modelo Acadêmico"):
+                dados = carregar_dados()
+                dados_tratados = tratar_dados(dados)
+                X, y, scaler = preparar_dados_para_modelo(dados_tratados)
+                X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.4, random_state=42)
+                X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
+
+                X_train = torch.tensor(X_train, dtype=torch.float32)
+                X_val = torch.tensor(X_val, dtype=torch.float32)
+                y_train = torch.tensor(y_train, dtype=torch.float32)
+                y_val = torch.tensor(y_val, dtype=torch.float32)
+
+                model = processar_modelo_academico(X_train, y_train, X_val, y_val, input_dim=X_train.shape[1], output_dim=1, iteracoes=iteracoes)
+                st.success("Modelo acadêmico processado com sucesso!")
+
+        elif opcao == "Contexto":
             st.title("Predição da Consistência da Cor da Cerveja para Heineken Brasil")
             st.subheader("Objetivo da Apresentação")
             st.write("Explorar métodos para prever a consistência da cor da cerveja Heineken produzida no Brasil, garantindo um produto confiável e uniforme para os consumidores.")
@@ -150,7 +194,7 @@ def main():
             st.write("Explorar os desafios enfrentados na manutenção da consistência da cor na produção da cerveja Amstel pela Heineken Brasil.")
             st.write("Identificar os aspectos específicos do processo de fabricação da Heineken Brasil que impactam a consistência da cor da cerveja Amstel.")
             st.write("Ao abordar o desafio de manter a consistência da cor da cerveja no processo de fabricação da marca Amstel, a Heineken Brasil pode garantir a qualidade e confiabilidade do seu produto para os clientes.")
-            
+
             st.subheader("Objetivos do Projeto")
             st.write("- Desenvolver um modelo para prever a cor da cerveja após o processo de resfriamento, utilizando técnicas avançadas de ciência de dados e aprendizado de máquina.")
             st.write("- Fornecer previsões altamente precisas sobre a cor da cerveja para auxiliar no processo de fabricação.")
@@ -163,18 +207,6 @@ def main():
             st.write("- Modelagem: Selecionar e calibrar modelos.")
             st.write("- Avaliação: Avaliar modelos e identificar melhorias.")
             st.write("- Implementação: Implantar modelo em produção.")
-
-            st.subheader("Etapas do Processamento de Dados")
-            st.write("Carregamento e filtragem, tratamento, segmentação com K-Means e suavização de dados.")
-
-            st.subheader("Modelagem e Arquitetura")
-            st.write("Preparação dos dados para o modelo LSTM com PyTorch, avaliação de desempenho e implementação do modelo final.")
-
-            st.subheader("Métricas de Avaliação")
-            st.write("RMSE: 0,45 | MAE: 0,32 | R²: 0,81 | AUC: 0,92 | Gini: 0,84 | Estatística K-S: 0,67")
-
-            st.subheader("Importância das Variáveis")
-            st.write("Principais variáveis: Tipo de Malte, Tempo de Torrefação, Temperatura de Fermentação, Variedade de Lúpulo.")
 
         elif opcao == "MODELO PREDITIVO":
             st.title("Modelo de Previsão da Cor Após Etapa de Resfriamento - Cerveja Amstel")
