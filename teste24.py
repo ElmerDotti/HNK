@@ -40,9 +40,9 @@ def login():
         else:
             st.error("Usuário ou senha incorretos!")
 
-# Configuração de estilo para exibir a etapa da metodologia CRISP-DM
+# Configuração de estilo para exibir as etapas do método CRISP-DM em fonte branca
 def etapa_crisp_dm(texto):
-    st.markdown(f"<h5 style='color:navy;'>{texto}</h5>", unsafe_allow_html=True)
+    st.markdown(f"<h5 style='color:white;'>{texto}</h5>", unsafe_allow_html=True)
 
 # Mapeamento de etapas de fabricação para rótulos de string
 ETAPAS_NOMES = {
@@ -178,7 +178,7 @@ def plot_importancia_variaveis(dados, cor_prevista):
     correlacoes = dados_numericos.corrwith(pd.Series(cor_prevista)).abs()
     top_corr = correlacoes.sort_values(ascending=False).head(10)
     
-    st.write("### Importância das Variáveis na Previsão de Cor")
+    st.markdown("<h3 style='color:white;'>Importância das Variáveis na Previsão de Cor</h3>", unsafe_allow_html=True)
 
     fig, ax = plt.subplots()
     top_corr.plot(kind='bar', ax=ax)
@@ -200,20 +200,37 @@ def main():
         if opcao == "MODELO PREDITIVO":
             st.title("Modelo de Previsão da Cor Após Etapa de Resfriamento - Cerveja Amstel")
 
-            # Exibir o vídeo diretamente do link fornecido
             video_url = "https://www.veed.io/view/31af47b8-7c73-468e-80da-e166c625d803?panel=share"
             st.video(video_url)
 
+            etapa_crisp_dm("Etapa: Entendimento do Negócio")
+            st.markdown("<p style='color:white;'>A Heineken Brasil enfrenta desafios para manter a cor da cerveja consistente no processo de fabricação, especialmente para a marca AMSTEL. A fase quente do processo de fabricação tem um impacto significativo na cor final. O objetivo deste modelo é prever a cor da cerveja logo após o processo de resfriamento, utilizando técnicas avançadas de ciência de dados e machine learning.</p>", unsafe_allow_html=True)
+
+            etapa_crisp_dm("Etapa: Entendimento dos Dados")
+            st.markdown("<h3 style='color:white;'>Dados Carregados</h3>", unsafe_allow_html=True)
             dados = carregar_dados()
-            st.write("### Dados Carregados")
             st.dataframe(dados)
 
+            etapa_crisp_dm("Etapa: Preparação dos Dados")
+            st.markdown("<h3 style='color:white;'>Tratamento de Dados</h3>", unsafe_allow_html=True)
             dados_tratados = tratar_dados(dados)
-            dados_suavizados = suavizar_com_media_movel(dados_tratados)
-            dados_segmentados = segmentar_etapas(dados_suavizados)
+            st.dataframe(dados_tratados)
 
+            etapa_crisp_dm("Etapa: Preparação dos Dados")
+            st.markdown("<h3 style='color:white;'>Dados Suavizados com Média Móvel</h3>", unsafe_allow_html=True)
+            dados_suavizados = suavizar_com_media_movel(dados_tratados)
+            st.dataframe(dados_suavizados)
+
+            etapa_crisp_dm("Etapa: Preparação dos Dados")
+            st.markdown("<h3 style='color:white;'>Dados com Segmentação de Etapas</h3>", unsafe_allow_html=True)
+            dados_segmentados = segmentar_etapas(dados_suavizados)
+            st.dataframe(dados_segmentados)
+
+            etapa_crisp_dm("Etapa: Modelagem")
+            st.markdown("<h3 style='color:white;'>Fluxograma do Modelo de Previsão</h3>", unsafe_allow_html=True)
             plot_fluxograma_modelo()
 
+            etapa_crisp_dm("Etapa: Modelagem")
             X, y, scaler = preparar_dados_para_modelo(dados_segmentados)
             
             X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
@@ -230,7 +247,8 @@ def main():
             output_dim = 1
             model = treinar_rede_neural(X_train, y_train, X_val, y_val, input_dim=input_dim, output_dim=output_dim)
 
-            st.write("### Métricas de Desempenho")
+            etapa_crisp_dm("Etapa: Avaliação")
+            st.markdown("<h3 style='color:white;'>Métricas de Desempenho</h3>", unsafe_allow_html=True)
             conjuntos = {'Treinamento': (X_train, y_train), 'Validação': (X_val, y_val), 'Teste': (X_test, y_test)}
             resultados = []
 
@@ -244,23 +262,14 @@ def main():
             resultados_df = pd.DataFrame(resultados)
             st.dataframe(resultados_df)
 
-            cols = st.columns(3)
-            for idx, (nome, (X_data, y_data)) in enumerate(conjuntos.items()):
-                y_data_real, y_data_pred, *_ = realizar_backtest(model, X_data, y_data, nome)
-                fig, ax = plt.subplots()
-                ax.plot(y_data_real, label="Valor Real")
-                ax.plot(y_data_pred, label="Previsão", linestyle='--')
-                ax.set_title(f"{nome}")
-                ax.legend()
-                cols[idx].pyplot(fig)
-
+            etapa_crisp_dm("Etapa: Avaliação")
             plot_importancia_variaveis(dados_segmentados, y)
 
         elif opcao == "Formulação Matemática":
             pdf_path = BASE_URL + "Modelo_Cor_Cerveja.pdf"
             pdf_bytes = carregar_arquivo(pdf_path)
             st.download_button(label="Baixar Formulação Matemática", data=pdf_bytes, file_name="Modelo_Cor_Cerveja.pdf")
-            st.write("**Formulação Matemática**: Baixe o documento acima para consultar o modelo matemático detalhado.")
+            st.markdown("<p style='color:white;'>Baixe o documento acima para consultar o modelo matemático detalhado.</p>", unsafe_allow_html=True)
 
 # Executar o aplicativo
 if __name__ == "__main__":
