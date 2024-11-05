@@ -25,7 +25,7 @@ def carregar_arquivo(url):
 
 # Tela de login
 def login():
-    logo = Image.open(requests.get(f"{BASE_URL}logo-removebg.PNG", stream=True).raw)
+    logo = Image.open(requests.get(f"{BASE_URL}logo-removebg.png", stream=True).raw)
     st.image(logo, width=150)  # Exibe o logotipo da Heineken
     st.title("Login")
 
