@@ -14,7 +14,6 @@ import networkx as nx
 from PIL import Image
 import requests
 
-# URL base do repositório GitHub
 BASE_URL = "https://raw.githubusercontent.com/ElmerDotti/HNK/main/"
 
 # Função para carregar arquivos do GitHub
@@ -25,7 +24,7 @@ def carregar_arquivo(url):
 
 # Tela de login
 def login():
-    st.image(f"{BASE_URL}logo-removebg.png", width=150)  # Exibe o logotipo da Heineken
+    st.image(f"{BASE_URL}logo-removebg.png", width=150)
     st.title("Login")
 
     # Campos de login
@@ -40,9 +39,9 @@ def login():
         else:
             st.error("Usuário ou senha incorretos!")
 
-# Configuração de estilo para exibir as etapas do método CRISP-DM em fonte branca
+# Configuração de estilo para exibir as etapas do método CRISP-DM em fonte cinza
 def etapa_crisp_dm(texto):
-    st.markdown(f"<h5 style='color:white;'>{texto}</h5>", unsafe_allow_html=True)
+    st.markdown(f"<h5 style='color:gray;'>{texto}</h5>", unsafe_allow_html=True)
 
 # Mapeamento de etapas de fabricação para rótulos de string
 ETAPAS_NOMES = {
@@ -76,13 +75,6 @@ def segmentar_etapas(dados, n_clusters=10):
     dados = dados.sort_values(by=['Date/Time', 'Etapa_Fabricacao']).reset_index(drop=True)
     return dados
 
-# Suavização alternativa com média móvel
-def suavizar_com_media_movel(df, window=3):
-    df_suave = df.copy()
-    for coluna in df.select_dtypes(include=[np.number]).columns:
-        df_suave[coluna] = df[coluna].rolling(window=window, min_periods=1).mean()
-    return df_suave
-
 # Preparar dados para entrada no modelo LSTM
 def preparar_dados_para_modelo(dados):
     scaler = MinMaxScaler()
@@ -95,8 +87,7 @@ def preparar_dados_para_modelo(dados):
         y.append(dados_scaled[i + 1][0])  # Assume que o alvo é a próxima observação da primeira coluna
     X = np.array(X)
     y = np.array(y)
-    
-    return X, y, scaler  # Retorna arrays numpy
+    return X, y, scaler
 
 # Definição da rede neural usando PyTorch com Dropout
 class BeerColorPredictor(nn.Module):
@@ -108,7 +99,7 @@ class BeerColorPredictor(nn.Module):
     def forward(self, x):
         out, (h_n, _) = self.lstm(x)
         out = self.fc(out[:, -1, :])
-        return out, h_n[-1]  # Retorna saída e pesos ocultos
+        return out, h_n[-1]
 
 # Função para criar e exibir o fluxograma do modelo usando networkx
 def plot_fluxograma_modelo():
@@ -122,55 +113,9 @@ def plot_fluxograma_modelo():
     pos = nx.spring_layout(G)
     plt.figure(figsize=(10, 5))
     nx.draw(G, pos, with_labels=True, node_size=2000, node_color="lightblue", font_size=10, font_weight="bold", edge_color="gray", arrows=True)
+    nx.draw_networkx_nodes(G, pos, nodelist=["Prever Cor"], node_color="green")  # Destaca "Prever Cor" em verde
     plt.title("Fluxograma do Modelo de Previsão de Cor")
     st.pyplot(plt)
-
-# Treinamento da rede neural com 5.000 iterações garantidas
-def treinar_rede_neural(X_train, y_train, X_val, y_val, input_dim, output_dim):
-    model = BeerColorPredictor(input_dim=input_dim, hidden_dim=128, output_dim=output_dim)
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-
-    for epoch in range(5000):  # 5.000 iterações garantidas
-        model.train()
-        optimizer.zero_grad()
-        outputs, _ = model(X_train.unsqueeze(1))
-        loss = criterion(outputs.squeeze(), y_train)
-        loss.backward()
-        optimizer.step()
-
-        if epoch % 1000 == 0:
-            model.eval()
-            with torch.no_grad():
-                val_outputs, _ = model(X_val.unsqueeze(1))
-                val_loss = criterion(val_outputs.squeeze(), y_val)
-                st.write(f'Época [{epoch+1}/5000], Loss: {loss.item():.4f}, Val_Loss: {val_loss.item():.4f}')
-    
-    return model
-
-# Função para realizar backtest e calcular métricas de desempenho para treino, validação e teste
-def realizar_backtest(model, X_data, y_data, conjunto):
-    model.eval()
-    with torch.no_grad():
-        outputs, hidden_weights = model(X_data.unsqueeze(1))
-        y_pred = outputs.squeeze().tolist()
-        y_data = y_data.tolist()
-        
-        mae = mean_absolute_error(y_data, y_pred)
-        rmse = np.sqrt(((np.array(y_pred) - np.array(y_data)) ** 2).mean())
-        assertividade = 1 - mae / np.mean(y_data)
-        r2 = r2_score(y_data, y_pred)
-
-        median_value = np.median(y_data)
-        y_data_bin = [1 if x >= median_value else 0 for x in y_data]
-        y_pred_bin = [1 if x >= median_value else 0 for x in y_pred]
-        
-        auc = roc_auc_score(y_data_bin, y_pred_bin)
-        fpr, tpr, _ = roc_curve(y_data_bin, y_pred_bin)
-        ks = max(tpr - fpr)
-        gini = 2 * auc - 1
-        
-    return y_data, y_pred, rmse, mae, assertividade, r2, auc, gini, ks
 
 # Função para calcular e plotar a importância das variáveis usando a correlação
 def plot_importancia_variaveis(dados, cor_prevista):
@@ -178,13 +123,21 @@ def plot_importancia_variaveis(dados, cor_prevista):
     correlacoes = dados_numericos.corrwith(pd.Series(cor_prevista)).abs()
     top_corr = correlacoes.sort_values(ascending=False).head(10)
     
-    st.markdown("<h3 style='color:white;'>Importância das Variáveis na Previsão de Cor</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color:gray;'>Importância das Variáveis na Previsão de Cor</h3>", unsafe_allow_html=True)
 
     fig, ax = plt.subplots()
     top_corr.plot(kind='bar', ax=ax)
     ax.set_title("Importância das Variáveis")
     ax.set_ylabel("Correlação Absoluta")
     st.pyplot(fig)
+
+    # Plot matriz de correlação para as 10 variáveis principais
+    top_vars = dados_numericos[top_corr.index]
+    corr_matrix = top_vars.corr()
+    st.markdown("<h3 style='color:gray;'>Matriz de Correlação das Principais Variáveis</h3>", unsafe_allow_html=True)
+    fig_corr, ax_corr = plt.subplots(figsize=(10, 8))
+    sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap="coolwarm", ax=ax_corr)
+    st.pyplot(fig_corr)
 
 # Função principal do aplicativo
 def main():
@@ -204,35 +157,29 @@ def main():
             st.video(video_url)
 
             etapa_crisp_dm("Etapa: Entendimento do Negócio")
-            st.markdown("<p style='color:white;'>A Heineken Brasil enfrenta desafios para manter a cor da cerveja consistente no processo de fabricação, especialmente para a marca AMSTEL. A fase quente do processo de fabricação tem um impacto significativo na cor final. O objetivo deste modelo é prever a cor da cerveja logo após o processo de resfriamento, utilizando técnicas avançadas de ciência de dados e machine learning.</p>", unsafe_allow_html=True)
+            st.markdown("<p style='color:gray;'>O objetivo deste modelo é prever a cor da cerveja logo após o processo de resfriamento.</p>", unsafe_allow_html=True)
 
             etapa_crisp_dm("Etapa: Entendimento dos Dados")
-            st.markdown("<h3 style='color:white;'>Dados Carregados</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='color:gray;'>Dados Carregados</h3>", unsafe_allow_html=True)
             dados = carregar_dados()
             st.dataframe(dados)
 
             etapa_crisp_dm("Etapa: Preparação dos Dados")
-            st.markdown("<h3 style='color:white;'>Tratamento de Dados</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='color:gray;'>Tratamento de Dados</h3>", unsafe_allow_html=True)
             dados_tratados = tratar_dados(dados)
             st.dataframe(dados_tratados)
 
             etapa_crisp_dm("Etapa: Preparação dos Dados")
-            st.markdown("<h3 style='color:white;'>Dados Suavizados com Média Móvel</h3>", unsafe_allow_html=True)
-            dados_suavizados = suavizar_com_media_movel(dados_tratados)
-            st.dataframe(dados_suavizados)
-
-            etapa_crisp_dm("Etapa: Preparação dos Dados")
-            st.markdown("<h3 style='color:white;'>Dados com Segmentação de Etapas</h3>", unsafe_allow_html=True)
-            dados_segmentados = segmentar_etapas(dados_suavizados)
+            st.markdown("<h3 style='color:gray;'>Dados com Segmentação de Etapas</h3>", unsafe_allow_html=True)
+            dados_segmentados = segmentar_etapas(dados_tratados)
             st.dataframe(dados_segmentados)
 
             etapa_crisp_dm("Etapa: Modelagem")
-            st.markdown("<h3 style='color:white;'>Fluxograma do Modelo de Previsão</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='color:gray;'>Fluxograma do Modelo de Previsão</h3>", unsafe_allow_html=True)
             plot_fluxograma_modelo()
 
             etapa_crisp_dm("Etapa: Modelagem")
             X, y, scaler = preparar_dados_para_modelo(dados_segmentados)
-            
             X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
             X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
 
@@ -245,22 +192,24 @@ def main():
 
             input_dim = X_train.shape[1]
             output_dim = 1
-            model = treinar_rede_neural(X_train, y_train, X_val, y_val, input_dim=input_dim, output_dim=output_dim)
+            model = BeerColorPredictor(input_dim=input_dim, hidden_dim=128, output_dim=output_dim)
+            criterion = nn.MSELoss()
+            optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-            etapa_crisp_dm("Etapa: Avaliação")
-            st.markdown("<h3 style='color:white;'>Métricas de Desempenho</h3>", unsafe_allow_html=True)
-            conjuntos = {'Treinamento': (X_train, y_train), 'Validação': (X_val, y_val), 'Teste': (X_test, y_test)}
-            resultados = []
+            for epoch in range(5000):  # 5.000 iterações garantidas
+                model.train()
+                optimizer.zero_grad()
+                outputs, _ = model(X_train.unsqueeze(1))
+                loss = criterion(outputs.squeeze(), y_train)
+                loss.backward()
+                optimizer.step()
 
-            for nome, (X_data, y_data) in conjuntos.items():
-                y_data_real, y_data_pred, rmse, mae, assertividade, r2, auc, gini, ks = realizar_backtest(model, X_data, y_data, nome)
-                resultados.append({
-                    "Conjunto": nome, "RMSE": rmse, "MAE": mae, "Assertividade": assertividade,
-                    "R²": r2, "AUC": auc, "Gini": gini, "KS": ks
-                })
-
-            resultados_df = pd.DataFrame(resultados)
-            st.dataframe(resultados_df)
+                if epoch % 1000 == 0:
+                    model.eval()
+                    with torch.no_grad():
+                        val_outputs, _ = model(X_val.unsqueeze(1))
+                        val_loss = criterion(val_outputs.squeeze(), y_val)
+                        st.write(f'Época [{epoch+1}/5000], Loss: {loss.item():.4f}, Val_Loss: {val_loss.item():.4f}')
 
             etapa_crisp_dm("Etapa: Avaliação")
             plot_importancia_variaveis(dados_segmentados, y)
@@ -269,7 +218,7 @@ def main():
             pdf_path = BASE_URL + "Modelo_Cor_Cerveja.pdf"
             pdf_bytes = carregar_arquivo(pdf_path)
             st.download_button(label="Baixar Formulação Matemática", data=pdf_bytes, file_name="Modelo_Cor_Cerveja.pdf")
-            st.markdown("<p style='color:white;'>Baixe o documento acima para consultar o modelo matemático detalhado.</p>", unsafe_allow_html=True)
+            st.markdown("<iframe src='" + pdf_path + "' width='100%' height='600px'></iframe>", unsafe_allow_html=True)
 
 # Executar o aplicativo
 if __name__ == "__main__":
