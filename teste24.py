@@ -13,6 +13,7 @@ import seaborn as sns
 import networkx as nx
 from PIL import Image
 import requests
+import graphviz  # Usada para o diagrama de causa e efeito
 
 BASE_URL = "https://raw.githubusercontent.com/ElmerDotti/HNK/main/"
 
@@ -123,14 +124,13 @@ def plot_importancia_variaveis(dados, cor_prevista):
     sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap="coolwarm", ax=ax_corr)
     st.pyplot(fig_corr)
 
-    # Gráfico Taguchi (Espinha de Peixe) para as variáveis e a cor prevista
+    # Gráfico de Causa e Efeito usando Graphviz
     st.markdown("<h3 style='color:gray;'>Diagrama de Causa e Efeito para a Previsão de Cor</h3>", unsafe_allow_html=True)
-    fig, ax = plt.subplots(figsize=(12, 8))
-    ax.plot()
-    for i, var in enumerate(top_corr.index):
-        ax.text(0.5, 0.1 + i * 0.1, f"{var}: {top_corr[var]:.2f}", ha="center", va="center", fontsize=12)
-    ax.axis("off")
-    st.pyplot(fig)
+    diagram = graphviz.Digraph()
+    diagram.node("Cor", "Previsão de Cor")
+    for var in top_corr.index:
+        diagram.edge("Cor", var, label=f"Influência: {top_corr[var]:.2f}")
+    st.graphviz_chart(diagram)
 
 def main():
     if "login" not in st.session_state:
