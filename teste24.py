@@ -27,7 +27,7 @@ def carregar_arquivo(url):
 # Função de login com correção para carregamento da imagem
 def login():
     try:
-        response = requests.get(f"{BASE_URL}logo-removebg.PNG")
+        response = requests.get(f"{BASE_URL}logo-removebg.png")
         response.raise_for_status()  # Verifica se a resposta está OK
         logo = Image.open(BytesIO(response.content))  # Carrega a imagem a partir dos bytes
         st.image(logo, width=150)  # Exibe o logotipo da Heineken
