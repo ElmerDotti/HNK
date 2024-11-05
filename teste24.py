@@ -54,7 +54,8 @@ ETAPAS_NOMES = {
 
 # Carregar e filtrar dados para o produto 'AMSTEL'
 def carregar_dados():
-    caminho = BASE_URL + "Heineken - Data Science CB Use Case 2024.csv"
+    # Caminho completo para o CSV no GitHub
+    caminho = BASE_URL + "Heineken%20-%20Data%20Science%20CB%20Use%20Case%202024.csv"
     dados = pd.read_csv(caminho)
     dados = dados[dados['Product'] == 'AMST']
     dados['Date/Time'] = pd.to_datetime(dados['Date/Time'])
