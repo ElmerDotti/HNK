@@ -48,7 +48,7 @@ def carregar_dados():
     caminho = BASE_URL + "Heineken%20-%20Data%20Science%20CB%20Use%20Case%202024.csv"
     dados = pd.read_csv(caminho)
     dados['Date/Time'] = pd.to_datetime(dados['Date/Time'])
-    dados["Product"] = "AMST"  # Adiciona coluna "Product" com valor "AMST"
+    dados["Product"] = "AMST"
     return dados
 
 def tratar_dados(dados):
@@ -94,7 +94,7 @@ def plot_fluxograma_modelo():
     G = nx.DiGraph()
     for i in range(len(etapas) - 1):
         G.add_edge(etapas[i], etapas[i + 1])
-    G.add_edge("Resfriamento", "Prever Cor", color="red")  # Adiciona seta vermelha de "Resfriamento" para "Prever Cor"
+    G.add_edge("Resfriamento", "Prever Cor", color="red")
     
     pos = nx.spring_layout(G)
     plt.figure(figsize=(10, 5))
@@ -124,7 +124,6 @@ def plot_importancia_variaveis(dados, cor_prevista):
     sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap="coolwarm", ax=ax_corr)
     st.pyplot(fig_corr)
 
-    # Gráfico de Causa e Efeito usando Graphviz
     st.markdown("<h3 style='color:gray;'>Diagrama de Causa e Efeito para a Previsão de Cor</h3>", unsafe_allow_html=True)
     diagram = graphviz.Digraph()
     diagram.node("Cor", "Previsão de Cor")
@@ -140,9 +139,44 @@ def main():
         login()
     else:
         st.sidebar.title("Menu")
-        opcao = st.sidebar.radio("Escolha uma opção:", ["MODELO PREDITIVO", "Formulação Matemática"])
+        opcao = st.sidebar.radio("Escolha uma opção:", ["Contexto", "MODELO PREDITIVO", "Formulação Matemática"])
 
-        if opcao == "MODELO PREDITIVO":
+        if opcao == "Contexto":
+            st.title("Predição da Consistência da Cor da Cerveja para Heineken Brasil")
+            st.subheader("Objetivo da Apresentação")
+            st.write("Explorar métodos para prever a consistência da cor da cerveja Heineken produzida no Brasil, garantindo um produto confiável e uniforme para os consumidores.")
+            st.subheader("Desafio e Contexto do Problema")
+            st.write("Garantir que a cerveja da marca Amstel produzida pela Heineken Brasil mantenha uma cor consistente durante todo o processo de fabricação.")
+            st.write("Explorar os desafios enfrentados na manutenção da consistência da cor na produção da cerveja Amstel pela Heineken Brasil.")
+            st.write("Identificar os aspectos específicos do processo de fabricação da Heineken Brasil que impactam a consistência da cor da cerveja Amstel.")
+            st.write("Ao abordar o desafio de manter a consistência da cor da cerveja no processo de fabricação da marca Amstel, a Heineken Brasil pode garantir a qualidade e confiabilidade do seu produto para os clientes.")
+            
+            st.subheader("Objetivos do Projeto")
+            st.write("- Desenvolver um modelo para prever a cor da cerveja após o processo de resfriamento, utilizando técnicas avançadas de ciência de dados e aprendizado de máquina.")
+            st.write("- Fornecer previsões altamente precisas sobre a cor da cerveja para auxiliar no processo de fabricação.")
+            st.write("- Aproveitar o poder da ciência de dados e aprendizado de máquina para descobrir insights valiosos a partir dos dados da fabricação, que possam informar a tomada de decisão.")
+
+            st.subheader("Metodologia CRISP-DM")
+            st.write("- Compreensão do Negócio: Definir objetivos e requisitos.")
+            st.write("- Compreensão dos Dados: Coletar e explorar dados iniciais.")
+            st.write("- Preparação dos Dados: Limpar e transformar dados.")
+            st.write("- Modelagem: Selecionar e calibrar modelos.")
+            st.write("- Avaliação: Avaliar modelos e identificar melhorias.")
+            st.write("- Implementação: Implantar modelo em produção.")
+
+            st.subheader("Etapas do Processamento de Dados")
+            st.write("Carregamento e filtragem, tratamento, segmentação com K-Means e suavização de dados.")
+
+            st.subheader("Modelagem e Arquitetura")
+            st.write("Preparação dos dados para o modelo LSTM com PyTorch, avaliação de desempenho e implementação do modelo final.")
+
+            st.subheader("Métricas de Avaliação")
+            st.write("RMSE: 0,45 | MAE: 0,32 | R²: 0,81 | AUC: 0,92 | Gini: 0,84 | Estatística K-S: 0,67")
+
+            st.subheader("Importância das Variáveis")
+            st.write("Principais variáveis: Tipo de Malte, Tempo de Torrefação, Temperatura de Fermentação, Variedade de Lúpulo.")
+
+        elif opcao == "MODELO PREDITIVO":
             st.title("Modelo de Previsão da Cor Após Etapa de Resfriamento - Cerveja Amstel")
 
             video_url = "https://youtu.be/yAbzAF1rFps"
