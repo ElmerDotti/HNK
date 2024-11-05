@@ -16,22 +16,16 @@ import requests
 
 BASE_URL = "https://raw.githubusercontent.com/ElmerDotti/HNK/main/"
 
-# Função para carregar arquivos do GitHub
 def carregar_arquivo(url):
     response = requests.get(url)
     response.raise_for_status()
     return response.content
 
-# Tela de login
 def login():
     st.image(f"{BASE_URL}logo-removebg.png", width=150)
     st.title("Login")
-
-    # Campos de login
     usuario = st.text_input("Usuário")
     senha = st.text_input("Senha", type="password")
-
-    # Autenticação simples
     if st.button("Entrar"):
         if usuario == "HNK" and senha == "HNK123":
             st.session_state["login"] = True
@@ -39,34 +33,29 @@ def login():
         else:
             st.error("Usuário ou senha incorretos!")
 
-# Configuração de estilo para exibir as etapas do método CRISP-DM em fonte cinza
-def etapa_crisp_dm(texto):
-    st.markdown(f"<h5 style='color:gray;'>{texto}</h5>", unsafe_allow_html=True)
+def etapa_crisp_dm(titulo, descricao):
+    st.markdown(f"<h5 style='color:gray;'>{titulo}</h5>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:gray;'>{descricao}</p>", unsafe_allow_html=True)
 
-# Mapeamento de etapas de fabricação para rótulos de string
 ETAPAS_NOMES = {
     0: "Moinho", 1: "Mistura", 2: "Cozimento", 3: "Filtragem",
     4: "Fervura", 5: "Clarificação", 6: "Resfriamento",
     7: "Fermentação", 8: "Maturação", 9: "Envase"
 }
 
-# Carregar e filtrar dados para o produto 'AMSTEL'
 def carregar_dados():
     caminho = BASE_URL + "Heineken%20-%20Data%20Science%20CB%20Use%20Case%202024.csv"
     dados = pd.read_csv(caminho)
-    dados = dados[dados['Product'] == 'AMST']
     dados['Date/Time'] = pd.to_datetime(dados['Date/Time'])
-    dados = dados.drop(columns=['Product'])  # Remover coluna não numérica
+    dados["Product"] = "AMST"  # Adiciona coluna "Product" com valor "AMST"
     return dados
 
-# Tratamento de dados: interpolação e valores absolutos para negativos
 def tratar_dados(dados):
     dados = dados.copy()
     dados.interpolate(method='linear', inplace=True)
     dados.update(dados.select_dtypes(include=[np.number]).abs())
     return dados
 
-# Segmentação das etapas de fabricação com KMeans
 def segmentar_etapas(dados, n_clusters=10):
     kmeans = KMeans(n_clusters=n_clusters, random_state=42)
     dados_numericos = dados.select_dtypes(include=[np.number])
@@ -75,7 +64,6 @@ def segmentar_etapas(dados, n_clusters=10):
     dados = dados.sort_values(by=['Date/Time', 'Etapa_Fabricacao']).reset_index(drop=True)
     return dados
 
-# Preparar dados para entrada no modelo LSTM
 def preparar_dados_para_modelo(dados):
     scaler = MinMaxScaler()
     dados_scaled = scaler.fit_transform(dados.select_dtypes(include=[np.number]))
@@ -84,12 +72,11 @@ def preparar_dados_para_modelo(dados):
     y = []
     for i in range(len(dados_scaled) - 1):
         X.append(dados_scaled[i])
-        y.append(dados_scaled[i + 1][0])  # Assume que o alvo é a próxima observação da primeira coluna
+        y.append(dados_scaled[i + 1][0])
     X = np.array(X)
     y = np.array(y)
     return X, y, scaler
 
-# Definição da rede neural usando PyTorch com Dropout
 class BeerColorPredictor(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim, dropout=0.3):
         super(BeerColorPredictor, self).__init__()
@@ -101,37 +88,34 @@ class BeerColorPredictor(nn.Module):
         out = self.fc(out[:, -1, :])
         return out, h_n[-1]
 
-# Função para criar e exibir o fluxograma do modelo usando networkx
 def plot_fluxograma_modelo():
     etapas = list(ETAPAS_NOMES.values()) + ["Prever Cor"]
     G = nx.DiGraph()
-    
-    # Adiciona nós e arestas
     for i in range(len(etapas) - 1):
         G.add_edge(etapas[i], etapas[i + 1])
+    G.add_edge("Resfriamento", "Prever Cor", color="red")  # Adiciona seta vermelha de "Resfriamento" para "Prever Cor"
     
     pos = nx.spring_layout(G)
     plt.figure(figsize=(10, 5))
-    nx.draw(G, pos, with_labels=True, node_size=2000, node_color="lightblue", font_size=10, font_weight="bold", edge_color="gray", arrows=True)
-    nx.draw_networkx_nodes(G, pos, nodelist=["Prever Cor"], node_color="green")  # Destaca "Prever Cor" em verde
+    edges = G.edges()
+    colors = ["red" if G[u][v]["color"] == "red" else "gray" for u, v in edges]
+    nx.draw(G, pos, with_labels=True, node_size=2000, node_color="lightblue", font_size=10, font_weight="bold", edge_color=colors, arrows=True)
+    nx.draw_networkx_nodes(G, pos, nodelist=["Prever Cor"], node_color="green")
     plt.title("Fluxograma do Modelo de Previsão de Cor")
     st.pyplot(plt)
 
-# Função para calcular e plotar a importância das variáveis usando a correlação
 def plot_importancia_variaveis(dados, cor_prevista):
     dados_numericos = dados.select_dtypes(include=[np.number])
     correlacoes = dados_numericos.corrwith(pd.Series(cor_prevista)).abs()
     top_corr = correlacoes.sort_values(ascending=False).head(10)
-    
-    st.markdown("<h3 style='color:gray;'>Importância das Variáveis na Previsão de Cor</h3>", unsafe_allow_html=True)
 
+    st.markdown("<h3 style='color:gray;'>Importância das Variáveis na Previsão de Cor</h3>", unsafe_allow_html=True)
     fig, ax = plt.subplots()
     top_corr.plot(kind='bar', ax=ax)
     ax.set_title("Importância das Variáveis")
     ax.set_ylabel("Correlação Absoluta")
     st.pyplot(fig)
 
-    # Plot matriz de correlação para as 10 variáveis principais
     top_vars = dados_numericos[top_corr.index]
     corr_matrix = top_vars.corr()
     st.markdown("<h3 style='color:gray;'>Matriz de Correlação das Principais Variáveis</h3>", unsafe_allow_html=True)
@@ -139,7 +123,15 @@ def plot_importancia_variaveis(dados, cor_prevista):
     sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap="coolwarm", ax=ax_corr)
     st.pyplot(fig_corr)
 
-# Função principal do aplicativo
+    # Gráfico Taguchi (Espinha de Peixe) para as variáveis e a cor prevista
+    st.markdown("<h3 style='color:gray;'>Diagrama de Causa e Efeito para a Previsão de Cor</h3>", unsafe_allow_html=True)
+    fig, ax = plt.subplots(figsize=(12, 8))
+    ax.plot()
+    for i, var in enumerate(top_corr.index):
+        ax.text(0.5, 0.1 + i * 0.1, f"{var}: {top_corr[var]:.2f}", ha="center", va="center", fontsize=12)
+    ax.axis("off")
+    st.pyplot(fig)
+
 def main():
     if "login" not in st.session_state:
         st.session_state["login"] = False
@@ -153,34 +145,26 @@ def main():
         if opcao == "MODELO PREDITIVO":
             st.title("Modelo de Previsão da Cor Após Etapa de Resfriamento - Cerveja Amstel")
 
-            video_url = "https://youtu.be/yAbzAF1rFps"
+            video_url = "https://www.veed.io/view/31af47b8-7c73-468e-80da-e166c625d803?panel=share"
             st.video(video_url)
 
-            etapa_crisp_dm("Etapa: Entendimento do Negócio")
-            st.markdown("<p style='color:gray;'>O objetivo deste modelo é prever a cor da cerveja logo após o processo de resfriamento.</p>", unsafe_allow_html=True)
-
-            etapa_crisp_dm("Etapa: Entendimento dos Dados")
-            st.markdown("<h3 style='color:gray;'>Dados Carregados</h3>", unsafe_allow_html=True)
+            etapa_crisp_dm("Etapa: Entendimento do Negócio", "O objetivo deste modelo é prever a cor da cerveja logo após o processo de resfriamento.")
             dados = carregar_dados()
+            etapa_crisp_dm("Etapa: Entendimento dos Dados", "Dados da produção da cerveja Amstel com medidas obtidas ao longo das etapas de fabricação.")
+            st.markdown("<h3 style='color:gray;'>Dados Carregados</h3>", unsafe_allow_html=True)
             st.dataframe(dados)
 
-            etapa_crisp_dm("Etapa: Preparação dos Dados")
-            st.markdown("<h3 style='color:gray;'>Tratamento de Dados</h3>", unsafe_allow_html=True)
+            etapa_crisp_dm("Etapa: Preparação dos Dados", "Preparação inclui interpolação de valores ausentes e remoção de valores negativos.")
             dados_tratados = tratar_dados(dados)
             st.dataframe(dados_tratados)
 
-            etapa_crisp_dm("Etapa: Preparação dos Dados")
-            st.markdown("<h3 style='color:gray;'>Dados com Segmentação de Etapas</h3>", unsafe_allow_html=True)
+            etapa_crisp_dm("Etapa: Segmentação de Etapas", "Aplicação do algoritmo KMeans para segmentar os dados nas etapas de fabricação.")
             dados_segmentados = segmentar_etapas(dados_tratados)
             st.dataframe(dados_segmentados)
 
-            etapa_crisp_dm("Etapa: Modelagem")
-            st.markdown("<h3 style='color:gray;'>Fluxograma do Modelo de Previsão</h3>", unsafe_allow_html=True)
-            plot_fluxograma_modelo()
-
-            etapa_crisp_dm("Etapa: Modelagem")
+            etapa_crisp_dm("Etapa: Modelagem", "Os dados foram divididos em 60% para treino, 20% para validação e 20% para teste.")
             X, y, scaler = preparar_dados_para_modelo(dados_segmentados)
-            X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
+            X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.4, random_state=42)
             X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
 
             X_train = torch.tensor(X_train, dtype=torch.float32)
@@ -211,7 +195,42 @@ def main():
                         val_loss = criterion(val_outputs.squeeze(), y_val)
                         st.write(f'Época [{epoch+1}/5000], Loss: {loss.item():.4f}, Val_Loss: {val_loss.item():.4f}')
 
-            etapa_crisp_dm("Etapa: Avaliação")
+            conjuntos = {'Treinamento': (X_train, y_train), 'Validação': (X_val, y_val), 'Teste': (X_test, y_test)}
+            resultados = []
+
+            for nome, (X_data, y_data) in conjuntos.items():
+                model.eval()
+                with torch.no_grad():
+                    outputs, _ = model(X_data.unsqueeze(1))
+                    y_pred = outputs.squeeze().tolist()
+                    y_data = y_data.tolist()
+
+                    mae = mean_absolute_error(y_data, y_pred)
+                    rmse = np.sqrt(((np.array(y_pred) - np.array(y_data)) ** 2).mean())
+                    r2 = r2_score(y_data, y_pred)
+                    auc = roc_auc_score([1 if x >= np.median(y_data) else 0 for x in y_data],
+                                        [1 if x >= np.median(y_pred) else 0 for x in y_pred])
+                    ks = max(np.subtract(*roc_curve([1 if x >= np.median(y_data) else 0 for x in y_data],
+                                                     [1 if x >= np.median(y_pred) else 0 for x in y_pred])[:2]))
+                    gini = 2 * auc - 1
+                    assertividade = 1 - mae / np.mean(y_data)
+
+                    resultados.append({"Conjunto": nome, "RMSE": rmse, "MAE": mae, "R²": r2, "AUC": auc,
+                                       "Gini": gini, "KS": ks, "Assertividade": assertividade})
+
+            resultados_df = pd.DataFrame(resultados)
+            st.dataframe(resultados_df)
+
+            fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+            for i, (nome, (X_data, y_data)) in enumerate(conjuntos.items()):
+                outputs, _ = model(X_data.unsqueeze(1))
+                y_pred = outputs.squeeze().tolist()
+                axs[i].plot(y_data, label="Real", alpha=0.7)
+                axs[i].plot(y_pred, label="Previsto", alpha=0.7)
+                axs[i].set_title(nome)
+                axs[i].legend()
+            st.pyplot(fig)
+
             plot_importancia_variaveis(dados_segmentados, y)
 
         elif opcao == "Formulação Matemática":
@@ -220,6 +239,5 @@ def main():
             st.download_button(label="Baixar Formulação Matemática", data=pdf_bytes, file_name="Modelo_Cor_Cerveja.pdf")
             st.markdown("<iframe src='" + pdf_path + "' width='100%' height='600px'></iframe>", unsafe_allow_html=True)
 
-# Executar o aplicativo
 if __name__ == "__main__":
     main()
